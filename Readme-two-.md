@@ -41,7 +41,7 @@ clash --systemverilog \
   -package ghc-typelits-natnormalise \
   Consensus.hs
 
-~~~
+```bash
 // Final Negotiated State: SystemVerilog Extraction
 module Consensus_topEntity
     ( // Inputs
@@ -76,4 +76,4 @@ module Consensus_topEntity
   assign negotiatedOutput = pose_reg;
 
 endmodule
-~~~
+---
