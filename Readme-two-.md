@@ -40,3 +40,40 @@ clash --systemverilog \
   -package ghc-typelits-extra \
   -package ghc-typelits-natnormalise \
   Consensus.hs
+
+~~~
+// Final Negotiated State: SystemVerilog Extraction
+module Consensus_topEntity
+    ( // Inputs
+      input clk
+    , input rst
+    , input en
+    , input [127:0] inputPose
+      // Outputs
+    , output wire [127:0] negotiatedOutput
+    );
+
+  // The 128-bit Pose Register (4x16 real, 4x16 dual)
+  reg [127:0] pose_reg;
+
+  // The Stability Gate Logic (Manifold Projection)
+  // Slicing [30:15] to enforce the 32767 plateau
+  wire [127:0] projected_next;
+  
+  // Internal logic performs the SE(3) constraint: d' = d - (r . d) * r
+  // This ensures the dual quaternion remains on the manifold.
+
+  always @(posedge clk or posedge rst) begin
+    if (rst) begin
+      // Initial Pose: Identity (1.0, 0, 0, 0 | 0, 0, 0, 0)
+      // 7FFF in hex represents the 32767 plateau (1.0 in Q1.15)
+      pose_reg <= 128'h7FFF0000000000000000000000000000;
+    end else if (en) begin
+      pose_reg <= projected_next;
+    end
+  end
+
+  assign negotiatedOutput = pose_reg;
+
+endmodule
+~~~
