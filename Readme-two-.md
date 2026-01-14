@@ -8,9 +8,9 @@ This repository houses the verified, synthesizable implementation of the **Unifi
 ## 核心 (Core) Architecture
 The kernel is founded on three immutable pillars of the Master Kernel lineage:
 
-* **Algebraic Base:** Rigid body poses in SE(3) expressed as Unit Dual Quaternions.
-* **Stability Protocol:** The `projectSE3` Stability Gate, utilizing saturated arithmetic to physically negate geometric drift.
-* **Numerical Plateau:** Q1.15 Fixed-point arithmetic (Signed 16-bit) capped at **32767**, ensuring deterministic consensus across hardware cycles.
+* **Algebraic Base:** SE(3) rigid body poses expressed as Unit Dual Quaternions.
+* **Stability Protocol:** Active Manifold Projection (`projectSE3`) utilizing saturated arithmetic to physically negate geometric drift.
+* **Numerical Plateau:** Q1.15 Fixed-point arithmetic (Signed 16-bit) plateauing at **32767**, ensuring deterministic consensus across hardware clock cycles.
 
 
 
@@ -21,19 +21,19 @@ The kernel is founded on three immutable pillars of the Master Kernel lineage:
 | Feature | Specification |
 | :--- | :--- |
 | **Logic Framework** | Clash (Haskell-to-HDL Integration) |
-| **Target Language** | SystemVerilog (IEEE 1800) |
+| **Target Output** | SystemVerilog (IEEE 1800) Gate Logic |
 | **Numeric Format** | Q1.15 Fixed-Point (Signed 16-bit) |
-| **Plateau Constant** | 32767 (Representing 1.0) |
-| **Constraint Logic** | SE(3) Orthogonality via Dot-Product Projection |
+| **Plateau Constant** | 32767 (Represents 1.0 in Q1.15) |
+| **Manifold Enforced** | SE(3) Orthogonality via Dot-Product Projection |
 
 ---
 
-## Synthesis & Implementation
+## Synthesis & Environment Setup
 
-In the Codespace environment, the compiler must explicitly expose type-level solvers to handle the hardware math requirements.
+In the GitHub Codespace environment, the GHC compiler must be explicitly instructed to "unhide" the specialized type-level solvers required for hardware math.
 
 ### **The Gold Standard Synthesis Command**
-Run the following to transform the abstract model into silicon-ready gate logic:
+Run this command in the terminal to transform the abstract model (`Consensus.hs`) into physical silicon gates:
 
 ```bash
 clash --systemverilog \
@@ -42,41 +42,3 @@ clash --systemverilog \
   -package ghc-typelits-extra \
   -package ghc-typelits-natnormalise \
   Consensus.hs
-
-/**
- * Module: Consensus_topEntity
- * Description: 128-bit hardware kernel for SE(3) pose stability.
- * Enforces d' = d - (r . d) * r via saturated Q1.15 arithmetic.
- */
-module Consensus_topEntity (
-    input  wire         clk,             // System Clock
-    input  wire         rst,             // Synchronous Reset
-    input  wire         en,              // Enable Signal
-    input  wire [127:0] inputPose,       // Raw Pose Input
-    output wire [127:0] negotiatedOutput // Stabilized Pose Output
-);
-
-  // 128-bit Pose Register (4x16 Real Part, 4x16 Dual Part)
-  reg [127:0] pose_reg;
-
-  // The Stability Gate: Slicing to enforce the 32767 plateau
-  wire [127:0] projected_next;
-  
-  // Logic Flow:
-  // 1. Calculate Dot Product (r . d)
-  // 2. Scale Real Part by Dot Product
-  // 3. Subtract from Dual Part to project back to SE(3) manifold
-  
-  always @(posedge clk) begin
-    if (rst) begin
-      // Identity Pose Initial State: 1.0 Real, 0.0 Dual
-      // 0x7FFF (32767) is the Q1.15 identity plateau.
-      pose_reg <= 128'h7FFF0000000000000000000000000000;
-    end else if (en) begin
-      pose_reg <= projected_next;
-    end
-  end
-
-  assign negotiatedOutput = pose_reg;
-
-endmodule
